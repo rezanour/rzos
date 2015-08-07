@@ -1,7 +1,4 @@
-# rzos
-Building a simple OS just for fun
-
-# getting set up:
+getting set up:
 
 1. I'm using the Git Shell from GitHub for Windows, which is a powershell based shell.
 2. Every time you start up the shell, run the setenv.ps1 script from the root.
