@@ -1,3 +1,5 @@
+; RZOS BootLoader
+
   org 0x7c00     ; where BIOS loads us
 
   call set_graphics_mode
