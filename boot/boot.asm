@@ -11,6 +11,12 @@ org 0x7c00     ; where BIOS loads us
   mov bx, WELCOME_MSG
   call print_string
 
+  mov bx, 25
+  call print_number
+
+  mov bx, NEWLINE_MSG
+  call print_string
+
   ; BIOS only loads 1 sector into memory and starts execution.
   ; We have code after that, so load the remainder of our boot
   ; loader into memory now.
@@ -60,6 +66,7 @@ the_end:
 
 WELCOME_MSG     db 'Welcome to RZOS, by Reza Nourai.', 0x0d, 0x0a, 0
 ERROR_MSG       db 'Error occurred loading remainder of boot loader into memory.', 0
+NEWLINE_MSG     db 0x0d, 0x0a, 0
 
 ;**********************************************************
 ; print_string - Prints null-terminated string at offset BX
@@ -83,6 +90,42 @@ print_string:
   ret
 
 ;**********************************************************
+; print_number - Prints number stored in BX
+; in: BX = an integer
+; out: none
+;**********************************************************
+print_number:
+  push ax
+  push bx
+  push cx
+  push dx
+  push 0xffff
+  mov cl, 10
+pn_1:
+  mov ax, bx
+  div cl
+  push ax
+  cmp al, 0
+  je pn_2
+  movsx bx, al
+  jmp pn_1
+pn_2:
+  pop ax
+  cmp ax, 0xffff      ; if 0..
+  je pn_3             ;    .. done
+  mov al, ah
+  add al, '0'
+  mov ah, 0x0e        ; teletype routine
+  int 10h             ; invoke BIOS video service
+  jmp pn_2
+pn_3:
+  pop dx
+  pop cx
+  pop bx
+  pop ax
+  ret
+
+;**********************************************************
 ; BIOS detects boot loader by looking for a signature
 ; at the end of the first 512 byte sector of the drive.
 ; fill out the rest of our first sector (with 0) and then
@@ -99,6 +142,6 @@ end_of_boot_sector:
 ; These will all get fetched into mem when we complete the 
 ; multi-sector read above.
 ;**********************************************************
-include '../graphics/graphics.asm'
+;include '../graphics/graphics.asm'
 
 end_of_boot_loader:
