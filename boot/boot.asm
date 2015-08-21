@@ -6,67 +6,74 @@
 ; Reza Nourai
 ;**********************************************************
 
-org 0x7c00     ; where BIOS loads us
+org 0x7c00      ; where BIOS loads us
+format binary   ; flat machine instructions output raw to file
+use16           ; use 16-bit real mode (what CPU starts in on boot)
+
+;**********************************************************
+; NOTE:
+; The BIOS loads a single 512 byte boot sector into memory
+; and begins execution there. Our boot sector code must fit
+; into 512 bytes, but we can load additional code & data
+; into memory ourselves to access after that.
+;**********************************************************
+
+;**********************************************************
+; boot sector code
+;**********************************************************
 
   mov bx, WELCOME_MSG
   call print_string
-
-  mov bx, 25
-  call print_number
-
-  mov bx, NEWLINE_MSG
+  mov bx, NEWLINE
   call print_string
 
-  ; BIOS only loads 1 sector into memory and starts execution.
-  ; We have code after that, so load the remainder of our boot
-  ; loader into memory now.
-
-  mov ax, 0x7e0  ; first address after boot sector
-  mov es, ax     ; setup es
+  mov bx, 13234
+  call print_number
 
   ; compute remaining size in # of 512 byte sectors.
-
   rest_of_boot_loader = end_of_boot_loader - end_of_boot_sector
   mov ax, rest_of_boot_loader
   mov bx, ax
-  and bx, 0x00ff
-  shr ax, 9      ; divide by 512
-  cmp bx, 0
-  je no_partial
-  add al, 1      ; add 1 if there is a partial sector left
-no_partial:
+  shr ax, 9       ; divide by 512
+  or bl, 0        ; if low byte of size is 0, no need to add partial sector
+  jz .no_partial
+  add al, 1       ; add 1 if there is a partial sector left
+.no_partial:
   ; al now has # of sectors to load
 
-  mov bx, 0      ; 0 offset from es
-  mov ah, 0x02   ; read sectors from drive
-  mov dl, 0x80   ; first hdd
-  mov dh, 0      ; head
-  mov ch, 0      ; cylinder
-  mov cl, 2      ; start sector, BIOS already read 1 into mem
-  int 0x13       ; disk service routine
+  mov bx, 0x7e0   ; first address after boot sector
+  mov es, bx
+  xor bx, bx      ; 0 offset from es
+  mov ah, 0x02    ; read_sectors BIOS function
+  mov dl, 0x80    ; select first hdd
+  mov dh, 0       ; head 0
+  mov ch, 0       ; cylinder 0
+  mov cl, 2       ; start sector, BIOS already read 1 into mem
+  int 0x13        ; invoke disk service routine
   jc boot_error
 
   jmp the_end
 
-  ; handle error during startup with a mode switch back to
-  ; text and then displaying a simple 'x'
-
 boot_error:
-  mov bx, ERROR_MSG
+  mov bx, LOAD_ERROR_MSG
+  call print_string
+  mov bx, NEWLINE
   call print_string
   jmp the_end
 
 the_end:
+  mov bx, END_MSG
+  call print_string
   jmp $           ; hang, nothing else to do
 
 ;**********************************************************
-; boot sector data section. All data & routines used before
-; loading remainder of loader must fit in first 512 bytes.
+; boot sector data
 ;**********************************************************
 
-WELCOME_MSG     db 'Welcome to RZOS, by Reza Nourai.', 0x0d, 0x0a, 0
-ERROR_MSG       db 'Error occurred loading remainder of boot loader into memory.', 0
-NEWLINE_MSG     db 0x0d, 0x0a, 0
+WELCOME_MSG     db 'Welcome to RZOS, by Reza Nourai.', 0
+LOAD_ERROR_MSG  db 'Error occurred loading remainder of boot loader into memory.', 0
+END_MSG         db 'The End.', 0
+NEWLINE         db 0x0d, 0x0a, 0
 
 ;**********************************************************
 ; print_string - Prints null-terminated string at offset BX
@@ -79,8 +86,8 @@ print_string:
   mov ah, 0x0e        ; teletype routine
 @@:
   mov al, byte ptr bx ; read character from string
-  cmp al, 0           ; if 0..
-  je @f               ;    .. done
+  cmp al, 0
+  je @f               ; if 0, reached end of string
   int 10h             ; invoke BIOS video service
   inc bx              ; advance pointer
   jmp @b
@@ -99,26 +106,27 @@ print_number:
   push bx
   push cx
   push dx
-  push 0xffff
-  mov cl, 10
-pn_1:
+  push 0xffff     ; insert token to mark end of digits in stack
+  mov cx, 10
   mov ax, bx
-  div cl
-  push ax
-  cmp al, 0
-  je pn_2
-  movsx bx, al
-  jmp pn_1
-pn_2:
-  pop ax
-  cmp ax, 0xffff      ; if 0..
-  je pn_3             ;    .. done
-  mov al, ah
-  add al, '0'
-  mov ah, 0x0e        ; teletype routine
-  int 10h             ; invoke BIOS video service
-  jmp pn_2
-pn_3:
+@@:
+  xor dx, dx      ; dx (upper word of dividend) to 0
+  div cx          ; divide by 10 to extract digit
+  push dx         ; store remainder as our digit
+  cmp ax, 0       ; if quotient is 0, no more digits, we're done
+  je @f
+  jmp @b
+@@:
+  mov ah, 0x0e    ; select teletype routine
+@@:
+  pop bx          ; pull out a digit (in high byte)
+  cmp bx, 0xffff  ; first, check for our end marker
+  je @f
+  mov al, bl      ; move quotient to al so we can use it for call
+  add al, '0'     ; add ascii offset for digit
+  int 10h         ; invoke BIOS video service
+  jmp @b
+@@:
   pop dx
   pop cx
   pop bx
@@ -136,6 +144,8 @@ pn_3:
   dw 0xaa55       ; boot loader signature
 
 end_of_boot_sector:
+
+DUMMY     db 1    ; ensure there is at least something in the next sector
 
 ;**********************************************************
 ; Load remaining boot loader code in sectors after.
