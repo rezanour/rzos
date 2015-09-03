@@ -10,6 +10,18 @@ org 0x7c00      ; where BIOS loads us
 format binary   ; flat machine instructions output raw to file
 use16           ; use 16-bit real mode (what CPU starts in on boot)
 
+  jmp start
+
+;**********************************************************
+; boot sector data
+;**********************************************************
+
+WELCOME_MSG     db 'Welcome to RZOS, by Reza Nourai.', 0
+LOAD_ERROR_MSG  db 'Error loading remainder of boot loader into memory.', 0
+MEM_ERROR_MSG   db 'Error querying system memory information.', 0
+END_MSG         db 'The End.', 0
+NEWLINE         db 0x0d, 0x0a, 0
+
 ;**********************************************************
 ; NOTE:
 ; The BIOS loads a single 512 byte boot sector into memory
@@ -22,6 +34,7 @@ use16           ; use 16-bit real mode (what CPU starts in on boot)
 ; boot sector code
 ;**********************************************************
 
+start:
   mov bx, WELCOME_MSG
   call print_string
   call print_newline
@@ -74,16 +87,6 @@ use16           ; use 16-bit real mode (what CPU starts in on boot)
   mov bx, END_MSG
   call print_string
   jmp $           ; hang, nothing else to do
-
-;**********************************************************
-; boot sector data
-;**********************************************************
-
-WELCOME_MSG     db 'Welcome to RZOS, by Reza Nourai.', 0
-LOAD_ERROR_MSG  db 'Error loading remainder of boot loader into memory.', 0
-MEM_ERROR_MSG   db 'Error querying system memory information.', 0
-END_MSG         db 'The End.', 0
-NEWLINE         db 0x0d, 0x0a, 0
 
 ;**********************************************************
 ; print_string - Prints null-terminated string at offset BX

@@ -23,10 +23,10 @@
 num_mmap_entries  dw  0
 mmap_entry        db  0 dup(240)  ; each entry is 24 bytes, so reserve room for 10 entries
 
-BYTES_OF        db ' bytes of ', 0
-AVAILABLE       db 'available memory', 0
-RESERVED        db 'reserved memory', 0
-OTHERMEM        db 'other memory', 0
+BYTES_OF          db ' bytes of ', 0
+AVAILABLE         db 'available memory', 0
+RESERVED          db 'reserved memory', 0
+OTHERMEM          db 'other memory', 0
 
 ;**********************************************************
 ; load_mem_map - Load system memory map
@@ -71,7 +71,7 @@ load_mem_map:
 .process_entry:
   jcxz .skip            ; skip 0 length entries
   cmp cl, 20            ; we asked for 24, did we only get 20 byte entry?
-  jbe .noext            ; no extended data
+  jle .noext            ; no extended data
   test byte [es:di + 20], 1   ; extended data with 1 set means 'ignore'
   je .skip
 
@@ -135,6 +135,7 @@ print_mem_map:
   call print_hex
   mov bx, word [es:di + 8]
   call print_hex
+
   mov bx, BYTES_OF
   call print_string
 
