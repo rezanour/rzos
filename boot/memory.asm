@@ -23,10 +23,11 @@
 num_mmap_entries  dw  0
 mmap_entry        db  0 dup(240)  ; each entry is 24 bytes, so reserve room for 10 entries
 
-BYTES_OF          db ' bytes of ', 0
-AVAILABLE         db 'available memory', 0
-RESERVED          db 'reserved memory', 0
-OTHERMEM          db 'other memory', 0
+BASE_OFFSET       db 'start [', 0
+SIZE_TEXT         db '] - size [', 0
+AVAILABLE         db '] - available', 0
+RESERVED          db '] - reserved', 0
+OTHERMEM          db '] - other', 0
 
 ;**********************************************************
 ; load_mem_map - Load system memory map
@@ -127,6 +128,21 @@ print_mem_map:
 
   dec cx
 
+  ; base address
+  mov bx, BASE_OFFSET
+  call print_string
+  mov bx, word [es:di + 6]
+  call print_hex
+  mov bx, word [es:di + 4]
+  call print_hex
+  mov bx, word [es:di + 2]
+  call print_hex
+  mov bx, word [es:di]
+  call print_hex
+
+  ; size
+  mov bx, SIZE_TEXT
+  call print_string
   mov bx, word [es:di + 14]
   call print_hex
   mov bx, word [es:di + 12]
@@ -136,9 +152,7 @@ print_mem_map:
   mov bx, word [es:di + 8]
   call print_hex
 
-  mov bx, BYTES_OF
-  call print_string
-
+  ; type
   mov ax, word [es:di + 16] ; get type
   cmp ax, 1             ; avail
   je .avail

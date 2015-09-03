@@ -38,6 +38,7 @@ start:
   mov bx, WELCOME_MSG
   call print_string
   call print_newline
+  call print_newline
 
   ; compute remaining size in # of 512 byte sectors.
   rest_of_boot_loader = end_of_boot_loader - end_of_boot_sector
@@ -60,6 +61,10 @@ start:
   mov cl, 2       ; start sector, BIOS already read 1 into mem
   int 0x13        ; invoke disk service routine
   jc .boot_error
+
+  ; print some CPU info
+  call print_cpu_info
+  call print_newline
 
   ; load up the memory map
   call load_mem_map
@@ -221,6 +226,7 @@ end_of_boot_sector:
 ; These will all get fetched into mem when we complete the 
 ; multi-sector read above.
 ;**********************************************************
+include 'cpu.asm'
 include 'memory.asm'
 
 end_of_boot_loader:
